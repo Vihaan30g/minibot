@@ -1,0 +1,51 @@
+controller_manager:
+  ros__parameters:
+
+    update_rate: 50  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+
+diff_drive_controller:
+  ros__parameters:
+
+    left_wheel_names:  ["left_wheel_joint"]
+    right_wheel_names: ["right_wheel_joint"]
+
+    wheel_separation: 0.27692   # distance between the two wheel centres (m)
+    wheel_radius:     0.04615   # wheel radius (m)
+
+    publish_rate: 50.0       # Hz — odometry publish rate
+
+    odom_frame_id:  odom
+    base_frame_id:  base_footprint
+
+    # FIX: use_stamped_vel must be FALSE so the controller listens on
+    # /diff_drive_controller/cmd_vel_unstamped (geometry_msgs/Twist).
+    # When true it expects /diff_drive_controller/cmd_vel
+    # (geometry_msgs/TwistStamped), which teleop_twist_keyboard does NOT publish.
+    use_stamped_vel: false
+
+    enable_odom_tf: true
+
+    # How long (s) to wait before stopping if no new cmd_vel arrives.
+    cmd_vel_timeout: 1.0
+
+    # Velocity limits
+    linear.x.has_velocity_limits:    true
+    linear.x.max_velocity:           1.0
+    linear.x.has_acceleration_limits: true
+    linear.x.max_acceleration:       1.0
+
+    angular.z.has_velocity_limits:    true
+    angular.z.max_velocity:           2.0
+    angular.z.has_acceleration_limits: true
+    angular.z.max_acceleration:       2.0
+
+    # Odometry covariances (diagonal values only)
+    pose_covariance_diagonal:     [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.01]
+    twist_covariance_diagonal:    [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.01]
