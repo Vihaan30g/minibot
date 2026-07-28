@@ -239,9 +239,9 @@
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="1.5707963267948966 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <mass value="0.250"/>
-      <inertia ixx="0.000156" ixy="0.0" ixz="0.0" iyy="0.000156" iyz="0.0" izz="0.000313"/>
+      <inertia ixx="0.000181" ixy="0.0" ixz="0.0" iyy="0.000181" iyz="0.0" izz="0.0003125"/>
     </inertial>
   </link>
   <joint name="right_wheel_joint" type="continuous">
@@ -251,6 +251,7 @@
     <axis xyz="0 1 0"/>
     <dynamics damping="0.05" friction="0.10"/>
   </joint>
+
   <!-- ============================================================
        LEFT DRIVE WHEEL
        ============================================================ -->
@@ -276,9 +277,9 @@
       </geometry>
     </collision>
     <inertial>
-      <origin rpy="1.5707963267948966 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <mass value="0.250"/>
-      <inertia ixx="0.000156" ixy="0.0" ixz="0.0" iyy="0.000156" iyz="0.0" izz="0.000313"/>
+      <inertia ixx="0.000181" ixy="0.0" ixz="0.0" iyy="0.000181" iyz="0.0" izz="0.0003125"/>
     </inertial>
   </link>
   <joint name="left_wheel_joint" type="continuous">
@@ -529,7 +530,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="-0.01 0 0.0"/>
       <geometry>
-        <mesh filename="file:///opt/ros/humble/share/zed_msgs/meshes/zed2i.stl"/>
+        <mesh filename="file:///opt/ros/humble/share/zed_description/meshes/zed2i.stl"/>
       </geometry>
       <material name="zed_mat">
         <color rgba="0.25 0.25 0.25 1.0"/>
@@ -538,14 +539,14 @@
     <collision>
       <origin rpy="0 0 0" xyz="-0.01 0 0.0"/>
       <geometry>
-        <mesh filename="file:///opt/ros/humble/share/zed_msgs/meshes/zed2i.stl"/>
+        <mesh filename="file:///opt/ros/humble/share/zed_description/meshes/zed2i.stl"/>
       </geometry>
     </collision>
   </link>
   <joint name="zed_camera_center_joint" type="fixed">
     <parent link="zed_camera_link"/>
     <child link="zed_camera_center"/>
-    <origin rpy="0 0.0 0" xyz="0 0 0.015"/>
+    <origin rpy="0 0.0 0" xyz="0 0 0.016"/>
   </joint>
   <!-- Left Camera -->
   <link name="zed_left_camera_frame">
@@ -583,12 +584,18 @@
        already the reference frame for wheel odometry — the ZED
        Positional Tracking module is not being used as the primary
        localization source.
-       Pose per spec: 12 cm in front of base_link, 44 cm above the
-       base plate. -->
+       Pose per spec: 19 cm in front of base_link (the drive axle), and
+       the camera base 42.5 cm above the chassis base plate. -->
   <joint name="zed_mount_joint" type="fixed">
     <parent link="base_link"/>
     <child link="zed_camera_link"/>
-    <origin rpy="0 0 0" xyz="0.12 0 0.425"/>
+    <!-- x = 0.19  -> 19 cm ahead of the differential-drive axle (base_link)
+         z = 0.410 -> base_link (axle) sits 1.5 cm ABOVE the chassis plate
+                      top (bpt = ground_clearance + ply_t - wheel_radius =
+                      0.03 + 0.005 - 0.05 = -0.015 m), so the camera base,
+                      42.5 cm above the PLATE, is bpt + 0.425 = 0.410 m
+                      above base_link. -->
+    <origin rpy="0 0 0" xyz="0.19 0 0.410"/>
   </joint>
   <!-- ============================================================
        GAZEBO – MATERIAL OVERRIDES
