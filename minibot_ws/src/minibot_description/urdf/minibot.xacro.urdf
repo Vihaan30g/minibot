@@ -1,0 +1,849 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ================================================================
+  MiniBot v2.0  –  Real Hardware URDF (Xacro)
+  ================================================================
+  Physical robot based on actual measurements and photos.
+
+  FRAME CONVENTION  (ROS REP-103)
+    X = forward   Y = left   Z = up
+    base_link origin = center of drive wheel axle, at wheel-axle height
+    base_footprint  = directly below base_link on the ground
+
+  TO CHANGE CAMERA HEIGHT:
+    Edit only:  zed_mount_z_above_base_plate  (and/or zed_mount_x_from_base_link)
+    Everything else (rods, base holder) stays fixed.
+
+  TO CHANGE ANY OTHER DIMENSION:
+    Edit the corresponding property at the top of this file.
+
+  COORDINATE NOTES
+    All joint origins are expressed relative to parent link origin.
+    base_plate_top_z_from_axle  = ply_t + ground_clearance - wheel_radius
+      = 0.005 + 0.03 - 0.05 = -0.015 m  (base plate top is 1.5 cm BELOW axle)
+  ================================================================
+-->
+<robot name="minibot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ============================================================
+       PARAMETERS  –  change values here, nothing else needs editing
+       ============================================================ -->
+
+  <!-- Plywood sheet thickness (m) -->
+  <xacro:property name="ply_t"               value="0.005"/>
+
+  <!-- Ground clearance: bottom of base plate to ground (m) -->
+  <xacro:property name="ground_clearance"    value="0.030"/>
+
+  <!-- Base chassis plate (m) — length=forward/backward, width=left/right -->
+  <xacro:property name="base_L"              value="0.320"/>
+  <xacro:property name="base_W"              value="0.300"/>
+
+  <!-- Drive wheels -->
+  <xacro:property name="wheel_radius"        value="0.050"/>
+  <xacro:property name="wheel_width"         value="0.035"/>
+  <!-- Distance of wheel axle from FRONT edge of base plate (m).
+       Per spec: 18.5 cm from front, axle midpoint = base_link origin. -->
+  <xacro:property name="wheel_x_from_front"   value="0.185"/>
+
+  <!-- Caster wheels (sphere approximation for Gazebo) -->
+  <xacro:property name="caster_radius"       value="0.015"/>
+  <!-- Distance of each caster center from its nearest plate edge (m) -->
+  <xacro:property name="caster_edge_offset"  value="0.040"/>
+
+  <!-- Upper box structure (the 3-sheet plywood enclosure) -->
+  <!-- Internal clear height of the box (between base plate top and ceiling bottom) -->
+  <xacro:property name="box_internal_H"      value="0.100"/>
+  <!-- Side walls / ceiling are shorter than the base plate and pushed to the
+       REAR, leaving open space at the front for the camera stand -->
+  <xacro:property name="box_L"               value="0.220"/>
+
+  <!-- Camera stand base rod holder (3D-printed, grey) -->
+  <xacro:property name="cam_base_L"          value="0.075"/>   <!-- forward-backward -->
+  <xacro:property name="cam_base_W"          value="0.151"/>   <!-- left-right -->
+  <xacro:property name="cam_base_H"          value="0.040"/>   <!-- height -->
+  <!-- Distance from FRONT edge of base plate to FRONT edge of cam_base holder -->
+  <xacro:property name="cam_base_front_offset" value="0.015"/>
+
+  <!-- Wooden rods -->
+  <xacro:property name="rod_radius"          value="0.0105"/>  <!-- 2.1 cm dia / 2 -->
+  <xacro:property name="rod_height"          value="0.340"/>   <!-- shortened: camera now floats above (see ZED section) -->
+  <!-- Y-offset of each rod from centerline (center-to-center spacing / 2) -->
+  <xacro:property name="rod_y_offset"        value="0.0505"/>
+
+  <!-- Detail geometry for the base rod-holder (matches the printed part:
+       two socket pedestals + a flat mounting flange underneath) -->
+  <xacro:property name="ped_size"     value="0.032"/>   <!-- socket pedestal footprint (sq.) -->
+  <xacro:property name="flange_H"     value="0.008"/>   <!-- bottom flange plate thickness -->
+  <xacro:property name="bridge_H_frac" value="0.55"/>   <!-- bridge height as fraction of pedestal height -->
+  <!-- Width of the bridge that spans between the two socket pedestals -->
+  <xacro:property name="clamp_bridge_W" value="${2*rod_y_offset - ped_size}"/>
+
+  <!-- ZED2i mount pose, per spec: camera center 12cm in front of base_link,
+       44cm above the base plate. The camera is NOT attached to the rods —
+       it is mounted directly to base_link at this fixed pose (see ZED
+       section near the end of this file for why). -->
+  <xacro:property name="zed_mount_x_from_base_link"    value="0.12"/>
+  <xacro:property name="zed_mount_z_above_base_plate"  value="0.44"/>
+
+  <!-- ============================================================
+       DERIVED QUANTITIES  (do not edit — calculated from above)
+       ============================================================ -->
+
+  <!-- Z of base plate top surface, relative to base_link (wheel axle) -->
+  <!-- base plate top from ground = ground_clearance + ply_t -->
+  <!-- wheel axle from ground = wheel_radius -->
+  <!-- so base plate top from axle = (ground_clearance + ply_t) - wheel_radius -->
+  <xacro:property name="bpt"  value="${ground_clearance + ply_t - wheel_radius}"/>
+  <!--  = 0.030 + 0.005 - 0.050 = -0.015 m -->
+
+  <!-- Drive wheel X from base_link origin (axle center) -->
+  <!-- axle is wheel_x_from_front from the FRONT edge; base plate center is
+       base_L/2 from the front edge; so plate-center-relative-to-axle,
+       expressed as an X offset from the axle, is: -->
+  <xacro:property name="wheel_x"  value="${wheel_x_from_front - base_L/2}"/>
+  <!--  = 0.185 - 0.16 = 0.025 m  (plate center is 2.5cm IN FRONT of the axle,
+        i.e. axle sits 2.5cm behind plate center, which is correct since
+        18.5cm from front > 16cm half-length) -->
+
+  <!-- Drive wheel Y: outside edge of chassis, wheels protrude -->
+  <xacro:property name="wheel_y"  value="${base_W/2 + wheel_width/2}"/>
+  <!--  = 0.15 + 0.0125 = 0.1625 m -->
+
+  <!-- Caster positions — measured from the ACTUAL plate edges (plate is
+       centered at wheel_x, not at base_link origin), 4 cm inset from each edge -->
+  <xacro:property name="front_caster_x"  value="${wheel_x + base_L/2 - caster_edge_offset}"/>
+  <xacro:property name="back_caster_x"   value="${wheel_x - base_L/2 + caster_edge_offset}"/>
+
+  <!-- X of the FRONT EDGE of the base plate, in base_link (axle) frame.
+       All camera-stand dimensions (base holder, rods, camera holder, ZED body)
+       are measured from this front edge — NOT from the caster position.
+       NOTE: the plate is centered at wheel_x, so the front edge must include
+       that offset (this was previously missing and pushed the whole camera
+       stand ~3 cm past the real edge of the plate). -->
+  <xacro:property name="front_edge_x"  value="${wheel_x + base_L/2}"/>
+
+  <!-- X of the REAR edge of the base plate -->
+  <xacro:property name="rear_edge_x"  value="${wheel_x - base_L/2}"/>
+  <!-- Center X of the (shorter) side walls / ceiling: back-aligned with the
+       plate's rear edge -->
+  <xacro:property name="box_center_x"  value="${rear_edge_x + box_L/2}"/>
+  <!-- Caster Z: caster bottom on ground → center at caster_radius above ground
+       relative to base_link (axle) = caster_radius - wheel_radius -->
+  <xacro:property name="caster_z"  value="${caster_radius - wheel_radius}"/>
+
+  <!-- Camera base holder center X from base_link origin -->
+  <xacro:property name="cam_base_center_x"  value="${base_L/2 - cam_base_front_offset - cam_base_L/2}"/>
+  <!-- Camera base holder center Z from base_link -->
+  <xacro:property name="cam_base_center_z"  value="${bpt + cam_base_H/2}"/>
+
+  <!-- Rod center X: front portion of cam_base_holder, rods near front -->
+  <xacro:property name="rod_x"  value="${base_L/2 - cam_base_front_offset - cam_base_L + rod_radius}"/>
+
+  <!-- Rod bottom Z from base_link = base plate top + cam_base_H -->
+  <!-- Rod center Z from base_link = bpt + cam_base_H + rod_height/2 -->
+  <xacro:property name="rod_center_z"  value="${bpt + cam_base_H + rod_height/2}"/>
+
+  <!-- ZED2i camera body center Z from base_link -->
+  <!-- Z of ZED2i mount point, relative to base_link (axle) -->
+  <xacro:property name="zed_mount_z"  value="${bpt + zed_mount_z_above_base_plate}"/>
+
+  <!-- Camera holder block center Z (holder bottom = ZED bottom, holder extends downward) -->
+
+  <!-- Side wall Y center (inner face at ±base_W/2, outer face ±(base_W/2 + ply_t)) -->
+  <xacro:property name="side_wall_y"  value="${base_W/2 - ply_t/2}"/>
+
+  <!-- Ceiling Z center -->
+  <xacro:property name="ceiling_z"  value="${bpt + box_internal_H + ply_t/2}"/>
+
+  <!-- Motor housing (visual only) — 37mm diameter geared DC motor -->
+  <xacro:property name="motor_r"    value="0.0185"/>
+  <xacro:property name="motor_len"  value="0.065"/>
+
+  <!-- ============================================================
+       MATERIALS
+       Color scheme: earthy plywood + distinct component colors
+       ============================================================ -->
+  <material name="plywood">
+    <color rgba="0.780 0.620 0.420 1.0"/>   <!-- warm wood tan -->
+  </material>
+  <material name="rubber_dark">
+    <color rgba="0.120 0.110 0.100 1.0"/>   <!-- near-black tyre -->
+  </material>
+  <material name="wheel_red_hub">
+    <color rgba="0.750 0.100 0.100 1.0"/>   <!-- red hub (matches real robot) -->
+  </material>
+  <material name="caster_metal">
+    <color rgba="0.550 0.550 0.560 1.0"/>   <!-- silver-grey ball caster -->
+  </material>
+  <material name="pla_grey">
+    <color rgba="0.650 0.660 0.680 1.0"/>   <!-- 3D-printed grey parts -->
+  </material>
+  <material name="wood_rod">
+    <color rgba="0.680 0.520 0.300 1.0"/>   <!-- natural wooden rod -->
+  </material>
+  <material name="zed_body">
+    <color rgba="0.900 0.905 0.910 1.0"/>   <!-- ZED2i white/light grey body -->
+  </material>
+  <material name="zed_lens">
+    <color rgba="0.050 0.080 0.180 1.0"/>   <!-- dark navy lens -->
+  </material>
+  <material name="motor_body">
+    <color rgba="0.450 0.080 0.080 1.0"/>   <!-- dark red motor body -->
+  </material>
+
+  <!-- ============================================================
+       BASE FOOTPRINT
+       ============================================================ -->
+  <link name="base_footprint"/>
+
+  <joint name="base_footprint_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child  link="base_link"/>
+    <!-- base_link is at wheel axle height = wheel_radius above ground -->
+    <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       BASE LINK  (origin = drive wheel axle center, robot midline)
+       This is a massless reference frame; the chassis plate is a child.
+       ============================================================ -->
+  <link name="base_link">
+    <inertial>
+      <!-- Approximate total robot inertia treated at base_link for control -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="4.500"/>
+      <inertia ixx="0.035" ixy="0.0" ixz="0.0"
+               iyy="0.042" iyz="0.0" izz="0.060"/>
+    </inertial>
+  </link>
+
+  <!-- ============================================================
+       CHASSIS BASE PLATE  (30 cm × 32 cm × 0.5 cm plywood)
+       ============================================================ -->
+  <link name="chassis_base_plate">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_L} ${base_W} ${ply_t}"/>
+      </geometry>
+      <material name="plywood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_L} ${base_W} ${ply_t}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.600"/>
+      <inertia ixx="0.004500" ixy="0.0" ixz="0.0"
+               iyy="0.005120" iyz="0.0" izz="0.009600"/>
+    </inertial>
+  </link>
+
+  <joint name="chassis_base_plate_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="chassis_base_plate"/>
+    <origin xyz="${wheel_x} 0 ${bpt - ply_t/2}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       UPPER BOX  –  LEFT SIDE WALL
+       ============================================================ -->
+  <link name="box_left_wall">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_L} ${ply_t} ${box_internal_H}"/>
+      </geometry>
+      <material name="plywood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_L} ${ply_t} ${box_internal_H}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.103"/>
+      <inertia ixx="0.000086" ixy="0.0" ixz="0.0"
+               iyy="0.000502" iyz="0.0" izz="0.000416"/>
+    </inertial>
+  </link>
+
+  <joint name="box_left_wall_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="box_left_wall"/>
+    <origin xyz="${box_center_x} ${base_W/2 - ply_t/2} ${bpt + box_internal_H/2}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       UPPER BOX  –  RIGHT SIDE WALL
+       ============================================================ -->
+  <link name="box_right_wall">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_L} ${ply_t} ${box_internal_H}"/>
+      </geometry>
+      <material name="plywood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_L} ${ply_t} ${box_internal_H}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.103"/>
+      <inertia ixx="0.000086" ixy="0.0" ixz="0.0"
+               iyy="0.000502" iyz="0.0" izz="0.000416"/>
+    </inertial>
+  </link>
+
+  <joint name="box_right_wall_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="box_right_wall"/>
+    <origin xyz="${box_center_x} ${-(base_W/2 - ply_t/2)} ${bpt + box_internal_H/2}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       UPPER BOX  –  CEILING PLATE
+       ============================================================ -->
+  <link name="box_ceiling">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_L} ${base_W} ${ply_t}"/>
+      </geometry>
+      <material name="plywood"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${box_L} ${base_W} ${ply_t}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.413"/>
+      <inertia ixx="0.003095" ixy="0.0" ixz="0.0"
+               iyy="0.001665" iyz="0.0" izz="0.004757"/>
+    </inertial>
+  </link>
+
+  <joint name="box_ceiling_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="box_ceiling"/>
+    <origin xyz="${box_center_x} 0 ${ceiling_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       RIGHT DRIVE WHEEL
+       ============================================================ -->
+  <link name="right_wheel_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+      <material name="rubber_dark"/>
+    </visual>
+    <visual>
+      <origin xyz="0 ${wheel_width*0.45} 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius*0.55}" length="${wheel_width*0.1}"/>
+      </geometry>
+      <material name="wheel_red_hub"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <mass value="0.250"/>
+      <inertia ixx="0.000156" ixy="0.0" ixz="0.0"
+               iyy="0.000156" iyz="0.0" izz="0.000313"/>
+    </inertial>
+  </link>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child  link="right_wheel_link"/>
+    <origin xyz="${wheel_x} ${-wheel_y} 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.05" friction="0.10"/>
+  </joint>
+
+  <!-- ============================================================
+       LEFT DRIVE WHEEL
+       ============================================================ -->
+  <link name="left_wheel_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+      <material name="rubber_dark"/>
+    </visual>
+    <visual>
+      <origin xyz="0 ${-wheel_width*0.45} 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius*0.55}" length="${wheel_width*0.1}"/>
+      </geometry>
+      <material name="wheel_red_hub"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <mass value="0.250"/>
+      <inertia ixx="0.000156" ixy="0.0" ixz="0.0"
+               iyy="0.000156" iyz="0.0" izz="0.000313"/>
+    </inertial>
+  </link>
+
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child  link="left_wheel_link"/>
+    <origin xyz="${wheel_x} ${wheel_y} 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <dynamics damping="0.05" friction="0.10"/>
+  </joint>
+
+  <!-- ============================================================
+       MOTOR HOUSING – RIGHT (visual, inside box right side)
+       ============================================================ -->
+  <link name="right_motor_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${motor_r}" length="${motor_len}"/>
+      </geometry>
+      <material name="motor_body"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.220"/>
+      <inertia ixx="0.000061" ixy="0.0" ixz="0.0"
+               iyy="0.000061" iyz="0.0" izz="0.000038"/>
+    </inertial>
+  </link>
+
+  <joint name="right_motor_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="right_motor_link"/>
+    <origin xyz="${wheel_x} ${-(base_W/2 - ply_t - motor_len/2)} 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- MOTOR HOUSING – LEFT -->
+  <link name="left_motor_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <geometry>
+        <cylinder radius="${motor_r}" length="${motor_len}"/>
+      </geometry>
+      <material name="motor_body"/>
+    </visual>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.220"/>
+      <inertia ixx="0.000061" ixy="0.0" ixz="0.0"
+               iyy="0.000061" iyz="0.0" izz="0.000038"/>
+    </inertial>
+  </link>
+
+  <joint name="left_motor_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="left_motor_link"/>
+    <origin xyz="${wheel_x} ${base_W/2 - ply_t - motor_len/2} 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       FRONT CASTER WHEEL
+       ============================================================ -->
+  <link name="front_caster_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${caster_radius}"/>
+      </geometry>
+      <material name="caster_metal"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${caster_radius}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.050"/>
+      <inertia ixx="0.000006" ixy="0.0" ixz="0.0"
+               iyy="0.000006" iyz="0.0" izz="0.000006"/>
+    </inertial>
+  </link>
+
+  <joint name="front_caster_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="front_caster_link"/>
+    <origin xyz="${front_caster_x} 0 ${caster_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       BACK CASTER WHEEL
+       ============================================================ -->
+  <link name="back_caster_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${caster_radius}"/>
+      </geometry>
+      <material name="caster_metal"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="${caster_radius}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.050"/>
+      <inertia ixx="0.000006" ixy="0.0" ixz="0.0"
+               iyy="0.000006" iyz="0.0" izz="0.000006"/>
+    </inertial>
+  </link>
+
+  <joint name="back_caster_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="back_caster_link"/>
+    <origin xyz="${back_caster_x} 0 ${caster_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       CAMERA STAND BASE ROD HOLDER  (3D-printed, grey)
+       ============================================================ -->
+  <link name="cam_base_holder_link">
+    <!-- Bottom mounting flange (thin plate the whole assembly sits on) -->
+    <visual>
+      <origin xyz="0 0 ${-cam_base_H/2 + flange_H/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${cam_base_L} ${cam_base_W} ${flange_H}"/>
+      </geometry>
+      <material name="pla_grey"/>
+    </visual>
+    <!-- Left socket pedestal (rod housing) -->
+    <visual>
+      <origin xyz="0 ${rod_y_offset} ${-cam_base_H/2 + flange_H + (cam_base_H-flange_H)/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${ped_size} ${ped_size} ${cam_base_H-flange_H}"/>
+      </geometry>
+      <material name="pla_grey"/>
+    </visual>
+    <!-- Right socket pedestal (rod housing) -->
+    <visual>
+      <origin xyz="0 ${-rod_y_offset} ${-cam_base_H/2 + flange_H + (cam_base_H-flange_H)/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${ped_size} ${ped_size} ${cam_base_H-flange_H}"/>
+      </geometry>
+      <material name="pla_grey"/>
+    </visual>
+    <!-- Connecting bridge between the two pedestals (shorter, stepped down) -->
+    <visual>
+      <origin xyz="0 0 ${-cam_base_H/2 + flange_H + bridge_H_frac*(cam_base_H-flange_H)/2}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${0.7*cam_base_L} ${clamp_bridge_W} ${bridge_H_frac*(cam_base_H-flange_H)}"/>
+      </geometry>
+      <material name="pla_grey"/>
+    </visual>
+    <!-- Single bounding-box collision (keeps physics simple/conservative) -->
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="${cam_base_L} ${cam_base_W} ${cam_base_H}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.120"/>
+      <inertia ixx="0.000067" ixy="0.0" ixz="0.0"
+               iyy="0.000038" iyz="0.0" izz="0.000095"/>
+    </inertial>
+  </link>
+
+  <joint name="cam_base_holder_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="cam_base_holder_link"/>
+    <origin xyz="${front_edge_x - cam_base_front_offset - cam_base_L/2}
+                  0
+                  ${bpt + cam_base_H/2}"
+            rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       LEFT ROD  (wooden dowel)
+       ============================================================ -->
+  <link name="cam_rod_left_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${rod_radius}" length="${rod_height}"/>
+      </geometry>
+      <material name="wood_rod"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${rod_radius}" length="${rod_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.080"/>
+      <inertia ixx="0.000202" ixy="0.0" ixz="0.0"
+               iyy="0.000202" iyz="0.0" izz="0.000001"/>
+    </inertial>
+  </link>
+
+  <joint name="cam_rod_left_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="cam_rod_left_link"/>
+    <origin xyz="${front_edge_x - cam_base_front_offset - rod_radius}
+                  ${rod_y_offset}
+                  ${bpt + cam_base_H + rod_height/2}"
+            rpy="0 0 0"/>
+  </joint>
+
+  <!-- RIGHT ROD -->
+  <link name="cam_rod_right_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${rod_radius}" length="${rod_height}"/>
+      </geometry>
+      <material name="wood_rod"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="${rod_radius}" length="${rod_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.080"/>
+      <inertia ixx="0.000202" ixy="0.0" ixz="0.0"
+               iyy="0.000202" iyz="0.0" izz="0.000001"/>
+    </inertial>
+  </link>
+
+  <joint name="cam_rod_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="cam_rod_right_link"/>
+    <origin xyz="${front_edge_x - cam_base_front_offset - rod_radius}
+                  ${-rod_y_offset}
+                  ${bpt + cam_base_H + rod_height/2}"
+            rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       ZED2i CAMERA — official Stereolabs description (floating)
+       ============================================================
+       Per user instruction, the printed clamp that used to grip the
+       rods and hold the camera is intentionally NOT modeled here.
+       The rods + cam_base_holder_link below remain as the physical
+       stand, but the camera itself is mounted directly to base_link
+       at a fixed pose that clears the rods (see zed_mount_joint).
+
+       WHY: robot_state_publisher was previously producing TWO
+       disconnected TF trees — one from this robot's own URDF, and a
+       second, separate one from the ZED node's internal robot model
+       (rooted at its own camera_link with no parent). The fix is to
+       stop hand-rolling ZED frames and instead pull in Stereolabs'
+       own xacro macro, which defines the camera_link, left/right
+       camera frames, optical frames, and IMU frame with the exact
+       names/conventions the zed_wrapper ROS node expects — then
+       attach that single subtree to base_link right here, so
+       everything is published by ONE robot_state_publisher as ONE
+       connected tree.
+
+       INSTALL (once, in your ROS 2 workspace) — see chat / PROGRESS_NOTES.md
+       for the full command sequence (git clone zed-ros2-wrapper, rosdep,
+       colcon build, source setup.bash). That install is what makes the
+       "zed_wrapper" package, and therefore $(find zed_wrapper) below,
+       resolvable by xacro.
+       Reference: https://docs.stereolabs.com/docs/integrations/ros-2/robot-integration
+       ============================================================ -->
+
+  <xacro:include filename="$(find zed_wrapper)/urdf/zed_macro.urdf.xacro"/>
+
+  <!-- Instantiates the full ZED2i link/joint subtree (zed_camera_link,
+       zed_left_camera_frame, zed_left_camera_optical_frame,
+       zed_right_camera_frame, zed_right_camera_optical_frame,
+       zed_imu_link, etc.) as ONE connected group, with the exact frame
+       names the zed_wrapper node publishes. name="zed" matches the
+       zed_wrapper launch files' default camera_name, so topics/frames
+       line up with no remapping needed. -->
+  <!-- IMPORTANT: the installed zed_macro.urdf.xacro requires a *gnss_origin
+       child block to be passed to xacro:zed_camera even when GNSS is
+       disabled (it's a mandatory xacro block-param, not optional). Omitting
+       it causes xacro to fail with "Not enough blocks" and produce an
+       EMPTY output file, which is why robot_state_publisher then failed
+       with "Error document empty" downstream — same root cause. -->
+  <xacro:zed_camera name="zed" model="zed2i" enable_gnss="false">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:zed_camera>
+
+  <!-- Attach the camera subtree to base_link. Per the Stereolabs
+       robot-integration guide this is the "use_zed_localization=false"
+       convention: base_link is the parent, zed_camera_link (the
+       camera's physical center) is the child. Correct here because
+       THIS robot's own base_link (differential-drive axle midpoint) is
+       already the reference frame for wheel odometry — the ZED
+       Positional Tracking module is not being used as the primary
+       localization source.
+       Pose per spec: 12 cm in front of base_link, 44 cm above the
+       base plate. -->
+  <joint name="zed_mount_joint" type="fixed">
+    <parent link="base_link"/>
+    <child  link="zed_camera_link"/>
+    <origin xyz="${zed_mount_x_from_base_link} 0 ${zed_mount_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ============================================================
+       GAZEBO – MATERIAL OVERRIDES
+       ============================================================ -->
+  <gazebo reference="chassis_base_plate">
+    <material>Gazebo/Wood</material>
+  </gazebo>
+  <gazebo reference="box_left_wall">
+    <material>Gazebo/Wood</material>
+  </gazebo>
+  <gazebo reference="box_right_wall">
+    <material>Gazebo/Wood</material>
+  </gazebo>
+  <gazebo reference="box_ceiling">
+    <material>Gazebo/Wood</material>
+  </gazebo>
+  <gazebo reference="cam_base_holder_link">
+    <material>Gazebo/Grey</material>
+  </gazebo>
+  <gazebo reference="cam_rod_left_link">
+    <material>Gazebo/WoodFloor</material>
+  </gazebo>
+  <gazebo reference="cam_rod_right_link">
+    <material>Gazebo/WoodFloor</material>
+  </gazebo>
+  <gazebo reference="right_wheel_link">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+    <fdir1>1 0 0</fdir1>
+  </gazebo>
+  <gazebo reference="left_wheel_link">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+    <kp>1000000.0</kp>
+    <kd>1.0</kd>
+    <fdir1>1 0 0</fdir1>
+  </gazebo>
+
+  <gazebo reference="front_caster_link">
+    <mu1>0.001</mu1>
+    <mu2>0.001</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+  </gazebo>
+  <gazebo reference="back_caster_link">
+    <mu1>0.001</mu1>
+    <mu2>0.001</mu2>
+    <kp>1000000.0</kp>
+    <kd>100.0</kd>
+  </gazebo>
+
+  <!-- ============================================================
+       GAZEBO PLUGINS
+       ============================================================ -->
+
+  <gazebo>
+    <plugin filename="libgazebo_ros_diff_drive.so" name="diff_drive_controller">
+      <ros>
+        <namespace>/minibot</namespace>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+        <remapping>odom:=odom</remapping>
+      </ros>
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.325</wheel_separation>
+      <wheel_diameter>0.100</wheel_diameter>
+      <max_wheel_torque>8.0</max_wheel_torque>
+      <max_wheel_acceleration>2.0</max_wheel_acceleration>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>true</publish_wheel_tf>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <update_rate>50.0</update_rate>
+    </plugin>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="libgazebo_ros_joint_state_publisher.so" name="joint_state_publisher">
+      <ros>
+        <namespace>/minibot</namespace>
+        <remapping>~/out:=joint_states</remapping>
+      </ros>
+      <update_rate>50</update_rate>
+      <joint_name>left_wheel_joint</joint_name>
+      <joint_name>right_wheel_joint</joint_name>
+    </plugin>
+  </gazebo>
+
+  <!-- NOTE: ZED2i sensor plugins for Gazebo simulation are intentionally
+       NOT hand-rolled here anymore. The official zed_wrapper package
+       (installed above) is the source of truth for ZED sensor behavior,
+       both on real hardware and in simulation. If/when you need the ZED
+       to publish synthetic image/depth/IMU data inside Gazebo, use
+       Stereolabs' own simulation integration rather than a hand-written
+       <sensor> block, so behavior matches the real zed_wrapper node.
+       See: https://docs.stereolabs.com/docs/integrations/ros-2/robot-integration -->
+
+  <!-- ============================================================
+       ROS2 CONTROL
+       ============================================================ -->
+  <ros2_control name="minibot_hw" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <joint name="left_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-10</param>
+        <param name="max">10</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_wheel_joint">
+      <command_interface name="velocity">
+        <param name="min">-10</param>
+        <param name="max">10</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+</robot>

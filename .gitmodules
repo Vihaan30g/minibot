@@ -1,3 +1,6 @@
 [submodule "minibot-simulation"]
 	path = minibot-simulation
 	url = https://github.com/Vihaan30g/minibot-simulation.git
+[submodule "minibot_ws/src/zed-ros2-wrapper"]
+	path = minibot_ws/src/zed-ros2-wrapper
+	url = https://github.com/stereolabs/zed-ros2-wrapper.git

@@ -1,0 +1,53 @@
+rtabmap:
+  ros__parameters:
+
+    #### Frames ####
+    frame_id: base_link
+    odom_frame_id: odom
+    map_frame_id: map
+
+    publish_tf: true
+
+    #### Inputs ####
+    subscribe_rgb: true
+    subscribe_depth: true
+    subscribe_scan: false
+    subscribe_scan_cloud: false
+
+    approx_sync: true
+    queue_size: 30  
+
+    #### Odometry ####
+    visual_odometry: false   # this means we dont want rtabmap to calc visual odometry by itslef, as we are already giving it.
+    use_action_for_goal: false
+
+    #### Database ####
+    database_path: ~/.ros/rtabmap.db
+
+    #### Memory ####
+    Mem/IncrementalMemory: "true"
+    Mem/InitWMWithAllNodes: "false"
+
+    #### Loop Closure ####
+    RGBD/ProximityBySpace: "true"
+    RGBD/OptimizeFromGraphEnd: "false"
+
+    #### Registration ####
+    Reg/Strategy: "1"
+
+    #### Optimizer ####
+    Optimizer/GravitySigma: "0"
+
+    #### Occupancy Grid ####
+    Grid/FromDepth: "true"
+    Grid/3D: "false"
+    Grid/RangeMax: "8.0"
+    Grid/CellSize: "0.05"
+
+    #### Performance ####
+    Rtabmap/DetectionRate: "10"
+    Rtabmap/TimeThr: "700"
+
+    #### RGBD ####
+    RGBD/LinearUpdate: "0.05"
+    RGBD/AngularUpdate: "0.05"
