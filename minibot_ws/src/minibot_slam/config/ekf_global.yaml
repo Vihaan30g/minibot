@@ -1,0 +1,45 @@
+ekf_global:
+  ros__parameters:
+    frequency: 30.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: true
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: map  # <--- Notice the change! World is now 'map'
+
+    # 1. ZED VIO
+    odom0: /zed/zed_node/odom
+    odom0_config: [true,  true,  false,
+                   false, false, true,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+    
+    # 2. Wheel Odometry
+    odom1: /wheel_odom
+    odom1_config: [false, false, false,
+                   false, false, false,
+                   true,  true,  false,
+                   false, false, true,
+                   false, false, false]
+
+    # 3. ZED IMU
+    imu0: /zed/zed_node/imu/data
+    imu0_config: [false, false, false,
+                  true,  true,  true,
+                  false, false, false,
+                  true,  true,  true,
+                  true,  true,  true]
+    imu0_remove_gravitational_acceleration: true
+
+    # 4. GPS Odometry (From navsat_transform_node)
+    odom2: /odometry/gps
+    odom2_config: [true,  true,  false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    odom2_differential: false
