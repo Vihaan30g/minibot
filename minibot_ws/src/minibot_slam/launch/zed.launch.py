@@ -11,7 +11,7 @@ from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
     # Get the path to your config file
-    minibot_localization_pkg = get_package_share_directory('minibot_localization')
+    minibot_localization_pkg = get_package_share_directory('minibot_slam')
     zed_config_path = os.path.join(minibot_localization_pkg, 'config', 'zed2i_outdoors.yaml')
 
     minibot_description_pkg = get_package_share_directory('minibot_description')
@@ -21,7 +21,7 @@ def generate_launch_description():
     base_link_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
-        name='rover_base_state_publisher',
+        name='robot_state_publisher',
         parameters=[{
             'robot_description': robot_desc
         }]
@@ -41,5 +41,5 @@ def generate_launch_description():
 
     return LaunchDescription([
         base_link_state_publisher,
-        zed_launch_file
+        zed_launch_file,
     ])

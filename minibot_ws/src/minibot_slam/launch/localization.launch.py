@@ -10,10 +10,6 @@ def generate_launch_description():
     package_name = 'minibot_slam'
     package_share_dir = get_package_share_directory(package_name)
 
-    # ---------------------------------------------------------
-    # 1. Transforms (CRITICAL: Using strict Humble syntax to prevent buffer crash)
-    # ---------------------------------------------------------
-    
     # Sledgehammer fix for the visualizer
     optical_frame_fix = Node(
         package='tf2_ros',
@@ -49,19 +45,35 @@ def generate_launch_description():
         ]
     )
 
+
+    odom_to_tf_node = Node(
+        package='odom_to_tf_ros2',
+        executable='odom_to_tf',
+        name='odom_to_tf_ros2',
+        output='screen',
+         parameters=[{
+            'odom_topic':'/zed/zed_node/odom',
+            'frame_id':'odom',
+            'child_frame_id':'base_link',
+            'inverse_tf':False,
+        }],
+    )
+
+    
+
     # ---------------------------------------------------------
     # 2. Extended Kalman Filter (Sensor Fusion)
     # ---------------------------------------------------------
-    ekf_config = os.path.join(package_share_dir, 'config', 'ekf_config.yaml')
+    # ekf_config = os.path.join(package_share_dir, 'config', 'ekf_config.yaml')
 
-    ekf_node = Node(
-        package='robot_localization',
-        executable='ekf_node',
-        name='ekf_filter_node',
-        output='screen',
-        parameters=[ekf_config],
-        remappings=[('odometry/filtered', '/odom_fused')]
-    )
+    # ekf_node = Node(
+    #     package='robot_localization',
+    #     executable='ekf_node',
+    #     name='ekf_filter_node',
+    #     output='screen',
+    #     parameters=[ekf_config],
+    #     remappings=[('odometry/filtered', '/odom_fused')]
+    # )
 
     # ---------------------------------------------------------
     # 3. SLAM (RTAB-Map) Configuration
@@ -133,7 +145,8 @@ def generate_launch_description():
         optical_frame_fix,
         imu_frame_fix,
         base_to_camera_fix,
-        ekf_node,
+        #ekf_node,
         rtabmap_node,
-        rtabmap_viz_node,  
+        rtabmap_viz_node,
+        odom_to_tf_node,
     ])
