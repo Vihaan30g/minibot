@@ -78,7 +78,7 @@ def generate_launch_description():
     # ---------------------------------------------------------
     # 3. SLAM (RTAB-Map) Configuration
     # ---------------------------------------------------------
-    rtabmap_parameters = [{
+    rtabmap_parameters = {
         'frame_id':              'base_link', # Anchored to EKF base
         'map_frame_id':          'map',
         'odom_frame_id':         'odom',
@@ -104,7 +104,7 @@ def generate_launch_description():
         'Grid/RangeMax':         '10.0',
         'Grid/RayTracing':       'true',
         'Landmark/Enabled':      'true',
-    }]
+    }
 
     # ---------------------------------------------------------
     # 4. Topic Remappings (Shared by SLAM and VIZ)
@@ -121,7 +121,10 @@ def generate_launch_description():
         package='rtabmap_slam',
         executable='rtabmap',
         output='screen',
-        parameters=rtabmap_parameters,
+        parameters=[ 
+            {'use_sim_time': True},
+            rtabmap_parameters
+        ],
         remappings=remappings,
         arguments=['-d']  
     )
@@ -131,7 +134,9 @@ def generate_launch_description():
         package='rtabmap_viz',
         executable='rtabmap_viz',
         output='screen',
-        parameters=[{
+        parameters=[
+            {'use_sim_time': True},   #DEBUG
+            {
             'frame_id': 'base_link', 
             'subscribe_depth': True,
             'subscribe_odom_info': False,
