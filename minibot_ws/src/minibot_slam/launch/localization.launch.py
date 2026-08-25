@@ -1,8 +1,10 @@
 from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
-import os 
+from launch_ros.substitutions import FindPackageShare
+import os
 from ament_index_python.packages import get_package_share_directory
-
 
 
 def generate_launch_description():
@@ -10,60 +12,21 @@ def generate_launch_description():
     package_name = 'minibot_slam'
     package_share_dir = get_package_share_directory(package_name)
 
-    # Sledgehammer fix for the visualizer
-    optical_frame_fix = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='optical_frame_alias',
-        arguments=[
-            '--x', '0', '--y', '0', '--z', '0', 
-            '--yaw', '-1.5708', '--pitch', '0', '--roll', '-1.5708', 
-            '--frame-id', 'zed_camera_link', '--child-frame-id', 'zed_left_camera_frame_optical' # <--- EXACT MATCH NOW
-        ]
+    # ---------------------------------------------------------
+    # 1. Wheel odometry
+    #    Publishes /wheel/odom (topic only). Make sure the node in
+    #    minibot_odometry does NOT also broadcast odom -> base_link --
+    #    the EKF below is the sole owner of that transform.
+    # ---------------------------------------------------------
+    wheel_odom_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [FindPackageShare('minibot_odometry'), '/launch/odometry.launch.py']
+        )
     )
-    # Bridge IMU to Camera
-    imu_frame_fix = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='imu_frame_alias',
-        arguments=[
-            '--x', '0', '--y', '0', '--z', '0', 
-            '--yaw', '0', '--pitch', '0', '--roll', '0', 
-            '--frame-id', 'zed_camera_link', '--child-frame-id', 'zed_imu_link'
-        ]
-    )
-
-    # Bridge Rover Center (base_link) to Camera (The "Neck")
-    base_to_camera_fix = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='base_to_camera',
-        arguments=[
-            '--x', '0.2', '--y', '0', '--z', '0.5', 
-            '--yaw', '0', '--pitch', '0', '--roll', '0', 
-            '--frame-id', 'base_link', '--child-frame-id', 'zed_camera_link'
-        ]
-    )
-
-
-    odom_to_tf_node = Node(
-        package='odom_to_tf_ros2',
-        executable='odom_to_tf',
-        name='odom_to_tf_ros2',
-        output='screen',
-         parameters=[{
-            'odom_topic':'/zed/zed_node/odom',
-            'frame_id':'odom',
-            'child_frame_id':'base_link',
-            'inverse_tf':False,
-        }],
-    )
-
-
-    
 
     # ---------------------------------------------------------
     # 2. Extended Kalman Filter (Sensor Fusion)
+    #    Sole publisher of odom -> base_link, fusing wheel + visual odometry.
     # ---------------------------------------------------------
     ekf_config = os.path.join(package_share_dir, 'config', 'ekf_config.yaml')
 
@@ -76,23 +39,22 @@ def generate_launch_description():
         remappings=[('odometry/filtered', '/odom_fused')]
     )
 
-
-
     # ---------------------------------------------------------
-    # 3. SLAM (RTAB-Map) Configuration
+    # 3. SLAM (RTAB-Map)
+    #    Sole publisher of map -> odom.
     # ---------------------------------------------------------
     rtabmap_parameters = [{
-        'frame_id':              'base_link', # Anchored to EKF base
+        'frame_id':              'base_link',
         'map_frame_id':          'map',
         'odom_frame_id':         'odom',
-        
+
         'subscribe_stereo':      False,
         'subscribe_depth':       True,
         'subscribe_odom_info':   False,
         'approx_sync':           True,
-        
-        'wait_for_transform':    2.0, 
-        'wait_imu_to_init':      True, 
+
+        'wait_for_transform':    2.0,
+        'wait_imu_to_init':      True,
 
         'Vis/FeatureType':       '8',
         'Kp/DetectorStrategy':   '8',
@@ -126,30 +88,26 @@ def generate_launch_description():
         output='screen',
         parameters=rtabmap_parameters,
         remappings=remappings,
-        arguments=['-d']  
+        arguments=['-d']
     )
-
 
     rtabmap_viz_node = Node(
         package='rtabmap_viz',
         executable='rtabmap_viz',
         output='screen',
         parameters=[{
-            'frame_id': 'base_link', 
+            'frame_id': 'base_link',
             'subscribe_depth': True,
             'subscribe_odom_info': False,
             'approx_sync': True,
-            'wait_for_transform': 0.5,  
+            'wait_for_transform': 0.5,
         }],
         remappings=remappings
     )
 
     return LaunchDescription([
-        optical_frame_fix,
-        imu_frame_fix,
-        base_to_camera_fix,
-        #ekf_node,
+        wheel_odom_launch,
+        ekf_node,
         rtabmap_node,
         rtabmap_viz_node,
-        odom_to_tf_node,
     ])

@@ -4,32 +4,34 @@
   <!-- Root robot frame -->
   <link name="base_link"/>
 
-  <!-- Reference link matching the ZED wrapper's root frame name -->
+  <!-- Reference link matching the ZED wrapper's own root frame name.
+       IMPORTANT: this is the ONLY zed-related frame defined here.
+       Everything from zed_camera_link downward (zed_camera_center,
+       zed_left_camera_frame, zed_left_camera_optical_frame, zed_imu_link,
+       etc.) is published by the ZED wrapper's OWN robot_state_publisher
+       (started automatically by zed_camera.launch.py when publish_urdf
+       is true), using the SDK's calibrated extrinsics. Do NOT redefine
+       any of those frames in this file or in a launch file- that was
+       the cause of the duplicate/competing static transforms
+       ("sledgehammer fix") in your old localization.launch.py. -->
+
   <link name="zed_camera_link"/>
 
-  <!-- Fixed mount: adjust xyz/rpy to your camera's real position on the rover -->
+  <!-- Fixed mount: base_link (drive axle) -> zed_camera_link.
+       Per current zed-ros2-wrapper design, base_link -> camera_link is
+       NOT published by the wrapper - that responsibility belongs to the
+       robot's own URDF, which is exactly what this joint does. Keep this. -->
   <joint name="base_to_zed_joint" type="fixed">
     <parent link="base_link"/>
     <child link="zed_camera_link"/>
-    <!-- xyz in meters, rpy in radians (roll pitch yaw) -->
-    <!-- x = 0.19  -> 19 cm ahead of the differential-drive axle (base_link)
+    <!-- xyz in meters, rpy in radians (roll pitch yaw)
+         x = 0.19  -> 19 cm ahead of the differential-drive axle (base_link)
          z = 0.410 -> base_link (axle) sits 1.5 cm ABOVE the chassis plate
                       top (bpt = ground_clearance + ply_t - wheel_radius =
                       0.03 + 0.005 - 0.05 = -0.015 m), so the camera base,
                       42.5 cm above the PLATE, is bpt + 0.425 = 0.410 m
                       above base_link. -->
     <origin rpy="0 0 0" xyz="0.19 0 0.410"/>
-  </joint>
-
-  <!-- ZED IMU Link -->
-  <link name="zed_imu_link"/>
-
-  <!-- Joint connecting zed_camera_link to zed_imu_link -->
-  <joint name="zed_camera_to_imu" type="fixed">
-    <parent link="zed_camera_link"/>
-    <child link="zed_imu_link"/>
-    <!-- Typical IMU position offset inside ZED camera body (in meters) -->
-    <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
   </joint>
 
 </robot>

@@ -3,38 +3,24 @@
     # General parameters
     general:
       camera_model: zed2i
-      base_frame: base_link
+      base_frame: base_link                 # must match the URDF frame_id -- correct, keep
       # grab_frame_rate: 15
-    # Video settings - crucial for feature detection
-    # video:
-    #   saturation: 6                         # Increase for better feature contrast [citation:1][citation:9]
-    #   sharpness: 6                          # Sharper edges for better feature detection [citation:1][citation:9]
-    #   gamma: 8                              # Middle value for general use [citation:1][citation:9]
-    #   auto_exposure_gain: false             # Disable auto to prevent sudden changes [citation:1][citation:4]
-    #   exposure: 50                          # Manual exposure for consistent lighting
-    #   gain: 50                              # Manual gain for consistent results
-    #   auto_whitebalance: false              # Disable for outdoor consistency [citation:1]
-    #   whitebalance_temperature: 42          # Fixed white balance (28=low, 65=high) [citation:1][citation:9]
 
     # Positional Tracking - Core odometry settings
     pos_tracking:
-      pos_tracking_enabled: true            # Enable positional tracking [citation:9]
-      publish_tf: false
-      # imu_fusion: true                      # MUST be true for VIO (Visual-Inertial Odometry) [citation:3][citation:9]
-      # area_memory: true                     # Enable area memory for loop closure [citation:9]
-      # floor_alignment: false                # Set true if on flat surface
-      # two_d_mode: false                     # Set true for ground robots (fixes Z, roll, pitch)
-      # initial_base_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      pos_tracking_enabled: true
+      publish_tf: false                     # correct: EKF owns odom -> base_link, not this node
 
     # Depth settings
     depth:
-      # depth_mode: ULTRA
-      min_depth: 0.3                        # 0.3 meters minimum [citation:9]
-      max_depth: 5.0                       # 20m max for outdoor use
-      # depth_stabilization: 1                # Stabilizes depth measurements [citation:9]
-      # depth_confidence: 50
-      # quality: 4                            # 4 = NEURAL (best quality) [citation:9]
-      # sensing_mode: 0                       # 0 = STANDARD, 1 = FILL [citation:9]
+      min_depth: 0.3
+      max_depth: 5.0
 
     sensors:
-      publish_imu_tf : true
+      # NOTE: with publish_urdf:=true (set in zed.launch.py) the ZED wrapper's
+      # own robot_state_publisher already publishes the camera->imu static TF
+      # from calibrated SDK extrinsics. This flag is a *separate* legacy path
+      # for broadcasting that same edge without the URDF. Having both active
+      # can double-publish zed_camera_link -> zed_imu_link. If you see
+      # TF_REPEATED_DATA warnings for that frame, set this to false.
+      publish_imu_tf: true
