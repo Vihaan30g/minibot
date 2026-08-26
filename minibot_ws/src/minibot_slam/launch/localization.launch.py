@@ -14,7 +14,7 @@ def generate_launch_description():
 
     # ---------------------------------------------------------
     # 1. Wheel odometry
-    #    Publishes /wheel/odom (topic only). Make sure the node in
+    #    Publishes /wheel/odom (topic only). The node in
     #    minibot_odometry does NOT also broadcast odom -> base_link --
     #    the EKF below is the sole owner of that transform.
     # ---------------------------------------------------------
@@ -42,34 +42,11 @@ def generate_launch_description():
     # ---------------------------------------------------------
     # 3. SLAM (RTAB-Map)
     #    Sole publisher of map -> odom.
+    #    Reads the SAME rtabmap_params.yaml that tuning_replay.launch.py
+    #    uses -- whatever you tune against the bag is exactly what runs
+    #    here, with no separate copy to keep in sync.
     # ---------------------------------------------------------
-    rtabmap_parameters = [{
-        'frame_id':              'base_link',
-        'map_frame_id':          'map',
-        'odom_frame_id':         'odom',
-
-        'subscribe_stereo':      False,
-        'subscribe_depth':       True,
-        'subscribe_odom_info':   False,
-        'approx_sync':           True,
-
-        'wait_for_transform':    2.0,
-        'wait_imu_to_init':      True,
-
-        'Vis/FeatureType':       '8',
-        'Kp/DetectorStrategy':   '8',
-        'Vis/MaxFeatures':       '1000',
-        'Vis/MinInliers':        '25',
-        'Rtabmap/LoopThr':       '0.11',
-        'Optimizer/Robust':      'true',
-        'Rtabmap/TimeThr':       '700',
-
-        'Grid/3D':               'true',
-        'Grid/CellSize':         '0.05',
-        'Grid/RangeMax':         '10.0',
-        'Grid/RayTracing':       'true',
-        'Landmark/Enabled':      'true',
-    }]
+    rtabmap_config = os.path.join(package_share_dir, 'config', 'rtabmap_params.yaml')
 
     # ---------------------------------------------------------
     # 4. Topic Remappings (Shared by SLAM and VIZ)
@@ -86,7 +63,7 @@ def generate_launch_description():
         package='rtabmap_slam',
         executable='rtabmap',
         output='screen',
-        parameters=rtabmap_parameters,
+        parameters=[rtabmap_config],
         remappings=remappings,
         arguments=['-d']
     )

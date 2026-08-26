@@ -1,0 +1,43 @@
+# Shared RTAB-Map parameters.
+#
+# Both tuning_replay.launch.py (bag replay, use_sim_time:=true) and
+# localization.launch.py (real robot, use_sim_time:=false, included by
+# full_system.launch.py) load THIS SAME FILE for the rtabmap node.
+# Tune here, relaunch tuning_replay.launch.py, and once you're happy the
+# real robot automatically gets the exact same values -- no copy/paste
+# between two places to forget.
+#
+# "/**" applies these to any node that loads this file, regardless of
+# its name, so the same file works for the rtabmap node in both launch
+# files without editing a node-name key here.
+
+/**:
+  ros__parameters:
+    frame_id:              'base_link'
+    map_frame_id:           'map'
+    odom_frame_id:          'odom'
+
+    subscribe_stereo:       false
+    subscribe_depth:        true
+    subscribe_odom_info:    false
+    approx_sync:            true
+
+    wait_for_transform:     2.0
+    wait_imu_to_init:       true
+
+    # --- Loop closure (your stated priority) ---
+    Vis/FeatureType:        '8'
+    Kp/DetectorStrategy:    '8'
+    Vis/MaxFeatures:        '1000'
+    Vis/MinInliers:         '25'
+    Rtabmap/LoopThr:        '0.11'
+    Optimizer/Robust:       'true'
+    Rtabmap/TimeThr:        '700'
+
+    # --- Map: 2D only. Robot stays on one plane, no ramps. ---
+    Grid/3D:                'false'   # was 'true' -- 3D grid isn't needed/wanted here
+    Grid/CellSize:          '0.05'
+    Grid/RangeMax:          '5.0'     # matches zed2i.yaml depth.max_depth (was 10.0, mismatched)
+    Grid/RayTracing:        'true'    # clears cells the sensor now sees through -- keeps
+                                       # transient obstacles out of the permanent map
+    Landmark/Enabled:       'true'
