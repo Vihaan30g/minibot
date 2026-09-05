@@ -45,8 +45,8 @@ constexpr uint16_t MAX_PWM = 255;
  * simply swap HIGH and LOW.
  * ============================
  */
-constexpr bool LEFT_FORWARD = LOW;
-constexpr bool LEFT_REVERSE = HIGH;
+constexpr bool LEFT_FORWARD = HIGH;
+constexpr bool LEFT_REVERSE = LOW;
 
 constexpr bool RIGHT_FORWARD = LOW;
 constexpr bool RIGHT_REVERSE = HIGH;
