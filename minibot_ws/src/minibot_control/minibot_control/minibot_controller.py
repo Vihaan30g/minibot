@@ -12,6 +12,7 @@ from typing import Optional
 from geometry_msgs.msg import Twist
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from std_msgs.msg import Float32MultiArray
 
 from minibot_control.kinematics import DifferentialKinematics
@@ -74,17 +75,35 @@ class MinibotController(Node):
         # ------------------------------------------------------------------
         # ROS 2 Interfaces (Pub, Sub, Timer)
         # ------------------------------------------------------------------
+        # Velocity commands are perishable: only the newest value is ever
+        # meaningful, so BEST_EFFORT + KEEP_LAST depth=1 means a momentary
+        # stall anywhere in the chain (this node, the micro-ROS agent, the
+        # serial link, the ESP32) drops stale commands instead of queuing
+        # them for guaranteed in-order delivery. A reliable queue here would
+        # let a brief hiccup "bank" delay that never gets undone, which
+        # compounds over time into exactly the growing command-to-motion
+        # lag this system was seeing. This QoS must be mirrored on the
+        # ESP32 firmware's /wheel_cmd_vel subscriber
+        # (rclc_subscription_init_best_effort), which is the other end of
+        # this same command path.
+        cmd_qos = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            durability=DurabilityPolicy.VOLATILE,
+        )
+
         self._cmd_vel_sub = self.create_subscription(
             Twist,
             '/cmd_vel',
             self._cmd_vel_callback,
-            10
+            cmd_qos
         )
 
         self._wheel_cmd_pub = self.create_publisher(
             Float32MultiArray,
             '/wheel_cmd_vel',
-            10
+            cmd_qos
         )
 
         timer_period = 1.0 / self.publish_rate

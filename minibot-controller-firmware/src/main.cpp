@@ -1,5 +1,3 @@
-
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <esp_system.h>  // esp_reset_reason() - for the diagnostics topic
@@ -389,7 +387,18 @@ void setup()
     RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
     RCCHECK(rclc_node_init_default(&node, UROS_NODE_NAME, UROS_NODE_NAMESPACE, &support));
 
-    RCCHECK(rclc_subscription_init_default(
+    // BEST_EFFORT, not the reliable default: /wheel_cmd_vel carries velocity
+    // commands, where only the newest value is ever meaningful. A reliable
+    // subscriber here would queue and force in-order delivery of every
+    // command, so a momentary stall (a slow I2C read, a serial retransmit,
+    // a scheduling hiccup on the agent side) "banks" a bit of delay that
+    // can never be undone -- that backlog compounds over minutes into a
+    // growing, hard-to-diagnose command-to-motion lag that only clears on
+    // agent restart. Best-effort drops stale queued commands instead of
+    // forcing them through, so the wheel always acts on the latest
+    // available command. This must match the QoS used by the Jetson-side
+    // node publishing /wheel_cmd_vel.
+    RCCHECK(rclc_subscription_init_best_effort(
         &cmdSubscriber, &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Float32MultiArray),
         UROS_CMD_TOPIC));
@@ -460,5 +469,3 @@ void loop()
     // the "wheel_states only arrives every few seconds" symptom.
     yield();
 }
-
-
