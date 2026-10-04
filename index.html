@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minibot: Indoor Autonomous Navigation Robot | Vihaan Gupta</title>
+<meta name="description" content="Minibot is a differential-drive indoor autonomous navigation robot with a ZED 2i camera, Jetson AGX Orin and an ESP32, designed and built from scratch and developed in Gazebo Ignition with Nav2 and RTAB-Map.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--soft:#f6f8fa;--text:#1f2933;--muted:#5b6770;--line:#e1e5ea;--accent:#1d4ed8;--code:#0f172a;--codetext:#e2e8f0}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text);background:var(--bg);line-height:1.7;font-size:17px}
+header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line)}
+.bar{max-width:900px;margin:auto;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.bar a{color:var(--text);text-decoration:none;font-weight:600;font-size:15px}
+.bar a:hover{color:var(--accent)}
+main{max-width:900px;margin:auto;padding:32px 20px 60px}
+h1{font-size:2.1rem;line-height:1.25;margin:.2em 0}
+h2{font-size:1.5rem;margin:2.4em 0 .6em;padding-bottom:.3em;border-bottom:1px solid var(--line)}
+h3{font-size:1.15rem;margin:1.6em 0 .4em}
+p{margin:.6em 0}
+p.lead{color:var(--muted);font-size:1.1rem}
+.meta{color:var(--muted);font-size:14px}
+a{color:var(--accent)}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.88em;background:var(--soft);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+.cb{position:relative;margin:14px 0}
+pre{margin:0;background:var(--code);color:var(--codetext);padding:16px 18px;border-radius:8px;overflow-x:auto;font-family:"JetBrains Mono",Consolas,monospace;font-size:14px;line-height:1.55}
+pre.tree{background:var(--soft);color:var(--text);border:1px solid var(--line);font-size:13px}
+.cb button{position:absolute;top:8px;right:8px;background:#334155;color:#e2e8f0;border:0;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer}
+.cb button:hover{background:#475569}
+.note,.warn{padding:12px 16px;border-radius:6px;margin:16px 0;border-left:4px solid var(--accent);background:#eff4ff}
+.warn{border-color:#b45309;background:#fff7ed}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:14px 0;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+nav.toc{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:14px 22px;margin:22px 0}
+nav.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:32px}
+@media(max-width:640px){nav.toc ol{columns:1}}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}
+.btn{display:inline-block;padding:8px 16px;border-radius:6px;font-weight:600;font-size:15px;text-decoration:none;border:1px solid var(--accent);background:var(--accent);color:#fff}
+.btn:hover{background:#1e40af}
+.btn.alt{background:#fff;color:var(--accent)}
+.btn.alt:hover{background:#eff4ff}
+.fig{margin:14px 0;border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px;text-align:center}
+.fig img{display:block;max-width:100%;height:auto;margin:auto;border-radius:4px;cursor:zoom-in}
+.fig figcaption{font-size:13.5px;color:var(--muted);margin-top:6px;line-height:1.4}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:760px){.grid3{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+.video{margin:18px 0}
+.video .frame{position:relative;padding-top:56.25%;border-radius:8px;overflow:hidden;background:#000;border:1px solid var(--line)}
+.video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.video figcaption{font-size:14px;color:var(--muted);margin-top:6px}
+.video .local{margin:0 0 10px;padding:10px 14px;border-radius:6px;border-left:4px solid #b45309;background:#fff7ed;font-size:14px;line-height:1.5}
+ul.tight{margin:.4em 0;padding-left:20px}ul.tight li{margin:4px 0}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;background:#eff4ff;color:var(--accent);border:1px solid #c7d6fb;vertical-align:middle}
+.node{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px 12px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.node.hl{background:#eff4ff;border-color:var(--accent)}
+.node .step{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.node.hl .step{color:var(--accent)}
+.node strong{font-size:15px;line-height:1.3}
+.node small{font-size:12.5px;color:var(--muted);line-height:1.4}
+.node code{font-size:11.5px}
+.flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px;margin:14px 0}
+.flow .link{display:flex;flex-direction:column;align-items:center;color:var(--accent);width:112px}
+.flow .link svg{width:44px;height:16px}
+.flow .link span{font-size:11px;color:var(--muted);text-align:center;line-height:1.25;margin-top:3px;word-break:break-all;font-family:"JetBrains Mono",Consolas,monospace}
+@media(max-width:760px){.flow{grid-template-columns:1fr;justify-items:center}.flow .node{width:100%;max-width:340px}.flow .link{width:auto;flex-direction:row;gap:8px}.flow .link svg{transform:rotate(90deg);width:30px;height:30px}.flow .link span{margin-top:0}}
+.pipe{display:flex;flex-direction:column;align-items:center;gap:0;margin:18px 0}
+.pipe .node{width:100%;max-width:560px}
+.pipe .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:560px}
+@media(max-width:560px){.pipe .two{grid-template-columns:1fr}}
+.pipe .down{color:var(--accent);height:30px;display:flex;align-items:center}
+.pipe .down svg{width:16px;height:26px}
+#lb{position:fixed;inset:0;background:rgba(15,23,42,.88);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;cursor:zoom-out}
+#lb img{max-width:100%;max-height:100%;background:#fff;border-radius:6px}
+footer{border-top:1px solid var(--line);padding:24px 20px;text-align:center;color:var(--muted);font-size:14px}
+.shot{margin:22px 0}
+.shot .ph{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;aspect-ratio:16/10;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--muted);font-size:15px;padding:16px}
+.shot img{display:none;width:100%;height:auto;border-radius:8px;border:1px solid var(--line)}
+.shot figcaption{font-size:14px;color:var(--muted);margin-top:6px}
+.soon{border:1px dashed #c7d6fb;background:#f7faff;border-radius:10px;padding:14px 18px;margin:24px 0}
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <a href="https://vihaan30g.github.io/">&larr; All Projects</a>
+  <a href="https://github.com/Vihaan30g/minibot">Repository</a>
+</div></header>
+<main>
+<p class="meta">Mobile Robotics &middot; Autonomous Navigation &middot; ROS 2 &middot; SLAM &middot; Last updated: October 2026</p>
+<h1>Minibot: Indoor Autonomous Navigation Robot <span class="badge" style="background:#fff7ed;color:#b45309;border-color:#f1c48f">Full documentation coming soon</span></h1>
+<p class="lead">A differential-drive robot that I designed and built from scratch, mechanics and electronics included, to navigate autonomously indoors.</p>
+
+<div class="btns">
+  <a class="btn" href="https://github.com/Vihaan30g/minibot">View repository on GitHub</a>
+</div>
+
+<figure class="shot">
+  <div class="ph" id="ph">Robot photo<code style="margin-top:6px">assets/minibot.jpg</code></div>
+  <img id="pic" src="assets/minibot.jpg" alt="The Minibot robot" onload="this.style.display='block';document.getElementById('ph').style.display='none'" onerror="this.style.display='none'">
+  <figcaption>The Minibot.</figcaption>
+</figure>
+
+<h2>About the robot</h2>
+<p>Minibot is an indoor autonomous navigation robot with two differentially driven wheels and two caster wheels. It senses the world with a <strong>ZED 2i</strong> stereo camera, computes on an <strong>NVIDIA Jetson AGX Orin</strong>, and reads two <strong>wheel encoders</strong> through a single <strong>ESP32</strong> microcontroller. The ZED 2i sits on a mount whose <strong>height can be adjusted</strong>.</p>
+<p>The chassis is made of <strong>wood</strong> (plywood sheets and wooden rods) together with <strong>3D-printed parts</strong>. The whole robot, both the mechanical design and the electronics, was designed and built by me.</p>
+
+<table>
+<tr><th>Drive</th><td>Differential drive: 2 driven wheels and 2 caster wheels</td></tr>
+<tr><th>Computer</th><td>NVIDIA Jetson AGX Orin</td></tr>
+<tr><th>Camera</th><td>ZED 2i, adjustable height</td></tr>
+<tr><th>Odometry sensors</th><td>2 wheel encoders</td></tr>
+<tr><th>Microcontroller</th><td>ESP32</td></tr>
+<tr><th>Chassis</th><td>Plywood sheets, wooden rods and 3D-printed parts</td></tr>
+</table>
+
+<h2>How it was built</h2>
+<ol class="tight">
+<li><strong>Simulation first.</strong> Before building anything physical, I created a complete, working simulation of the robot in Gazebo Ignition. In simulation it reaches good autonomy using <strong>Nav2</strong> for navigation and <strong>RTAB-Map</strong> for SLAM.</li>
+<li><strong>Then the real robot.</strong> I built the physical Minibot myself. It is complete and drives well, with its motor controller working. Running SLAM and the navigation stack on the real robot is the next step.</li>
+</ol>
+
+<div class="soon"><strong>Detailed documentation is on the way.</strong> I have many videos and a lot of material covering the whole process, from the simulation to the mechanical build and the electronics. I am editing and writing it all up, and it will appear here and in the repository.</div>
+
+</main>
+<footer>Written by Vihaan Gupta &middot; <a href="https://github.com/Vihaan30g">GitHub</a> &middot; <a href="https://github.com/Vihaan30g/minibot">This repository</a> &middot; <a href="https://www.youtube.com/@vihaan30g">YouTube</a> &middot; <a href="mailto:vihaan30g@gmail.com">vihaan30g@gmail.com</a></footer>
+<div id="lb"><img alt=""></div>
+<script>
+document.querySelectorAll('.cb').forEach(function(b){
+  var btn=document.createElement('button');btn.textContent='Copy';
+  btn.onclick=function(){
+    var t=b.querySelector('pre').innerText;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy'},1500)}).catch(function(){btn.textContent='Press Ctrl+C'});
+  };
+  b.appendChild(btn);
+});
+var lb=document.getElementById('lb'),lbi=lb.querySelector('img');
+document.querySelectorAll('.fig img').forEach(function(i){
+  i.addEventListener('click',function(){lbi.src=i.src;lbi.alt=i.alt;lb.style.display='flex'});
+});
+lb.addEventListener('click',function(){lb.style.display='none'});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')lb.style.display='none'});
+// YouTube cannot play embedded videos on pages opened straight from disk (file://).
+if (location.protocol === 'file:') {
+  var first = document.querySelector('.video');
+  if (first) {
+    var d = document.createElement('div');
+    d.className = 'local';
+    d.innerHTML = '<strong>Videos will not play inline here.</strong> You opened this page as a local file, and YouTube only plays embedded videos on pages served over http(s). View it on GitHub Pages, or run <code>python3 -m http.server</code> in the repository folder and open <code>http://localhost:8000</code>.';
+    first.parentNode.insertBefore(d, first);
+  }
+}
+</script>
+</body>
+</html>
